@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: microservices
+  labels:
+    app: payment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: ecommerce-payment-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3004
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3004"
+            - name: MONGODB_URI
+              value: mongodb://mongo-payments.databases:27017/ecommerce-payments
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: JWT_SECRET
+            - name: ORDER_SERVICE_URL
+              value: http://order-service:3003
+            - name: PAYMENT_SUCCESS_RATE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PAYMENT_SUCCESS_RATE
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3004
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3004
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: microservices
+spec:
+  selector:
+    app: payment-service
+  ports:
+    - port: 3004
+      targetPort: 3004

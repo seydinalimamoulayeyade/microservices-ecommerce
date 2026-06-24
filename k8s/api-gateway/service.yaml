@@ -1,0 +1,14 @@
+# Point d'entrée exposé. En local (minikube/kind) : NodePort (port auto-assigné).
+# En production (EKS) : remplacer par type LoadBalancer (provisionne un ALB).
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: microservices
+spec:
+  type: NodePort
+  selector:
+    app: api-gateway
+  ports:
+    - port: 3000
+      targetPort: 3000

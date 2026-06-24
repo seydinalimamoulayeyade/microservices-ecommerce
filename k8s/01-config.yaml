@@ -1,0 +1,22 @@
+# Configuration non sensible partagée par les services
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: microservices
+data:
+  JWT_EXPIRES_IN: "1h"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX: "100"
+  PAYMENT_SUCCESS_RATE: "0.7"
+---
+# Secret partagé (JWT). En production : utiliser un gestionnaire de secrets
+# (AWS Secrets Manager, Sealed Secrets...) plutôt qu'une valeur en clair.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+  namespace: microservices
+type: Opaque
+stringData:
+  JWT_SECRET: dev-secret-please-change
