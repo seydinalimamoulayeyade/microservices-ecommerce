@@ -38,7 +38,7 @@ Node.js / Express (×5) · MongoDB (une base par service) · Docker Compose (loc
 ## État d'avancement
 
 - [x] Auth Service
-- [ ] Product Service
+- [x] Product Service
 - [ ] Order Service
 - [ ] Payment Service
 - [ ] API Gateway
