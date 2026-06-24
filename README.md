@@ -41,7 +41,7 @@ Node.js / Express (×5) · MongoDB (une base par service) · Docker Compose (loc
 - [x] Product Service
 - [x] Order Service
 - [x] Payment Service
-- [ ] API Gateway
+- [x] API Gateway
 - [ ] Docker Compose
 - [ ] Kubernetes
 - [ ] Terraform
