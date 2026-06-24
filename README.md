@@ -42,11 +42,43 @@ Node.js / Express (×5) · MongoDB (une base par service) · Docker Compose (loc
 - [x] Order Service
 - [x] Payment Service
 - [x] API Gateway
-- [ ] Docker Compose
+- [x] Docker Compose
 - [ ] Kubernetes
 - [ ] Terraform
 
-## Démarrage (Phase 1)
+## Démarrage
+
+### Tout en conteneurs (recommandé — Phase 2)
+
+```bash
+cp .env.example .env          # définir JWT_SECRET
+docker compose up -d --build  # 5 services + 4 bases MongoDB
+```
+
+Seule la passerelle est exposée : **http://localhost:3000**. Les services et les bases communiquent sur le réseau interne `ecommerce-network`.
+
+```bash
+docker compose ps             # état des conteneurs
+docker compose logs -f api-gateway
+docker compose down           # arrêter (ajouter -v pour purger les volumes)
+```
+
+Exemple de parcours complet via la passerelle :
+
+```bash
+# Inscription + connexion
+curl -X POST http://localhost:3000/api/auth/register -H "Content-Type: application/json" \
+  -d '{"username":"alice","email":"alice@example.com","password":"secret123"}'
+TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"secret123"}' | jq -r .token)
+
+# Catalogue (public), commande et paiement (JWT requis)
+curl http://localhost:3000/api/products
+curl -X POST http://localhost:3000/api/orders -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"items":[{"productId":"<id>","quantity":1}]}'
+```
+
+### Service par service (Phase 1)
 
 Chaque service se lance indépendamment. Voir le README de chaque service dans `services/`.
 

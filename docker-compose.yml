@@ -1,0 +1,173 @@
+name: ecommerce
+
+x-mongo-healthcheck: &mongo-healthcheck
+  test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand('ping').ok"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 20s
+
+services:
+  # ── Bases de données (une par service, isolées) ──────────────
+  mongo-auth:
+    image: mongo:7.0
+    container_name: ecommerce-mongo-auth
+    restart: unless-stopped
+    volumes:
+      - mongo-auth-data:/data/db
+    networks: [ecommerce-network]
+    healthcheck: *mongo-healthcheck
+
+  mongo-products:
+    image: mongo:7.0
+    container_name: ecommerce-mongo-products
+    restart: unless-stopped
+    volumes:
+      - mongo-products-data:/data/db
+    networks: [ecommerce-network]
+    healthcheck: *mongo-healthcheck
+
+  mongo-orders:
+    image: mongo:7.0
+    container_name: ecommerce-mongo-orders
+    restart: unless-stopped
+    volumes:
+      - mongo-orders-data:/data/db
+    networks: [ecommerce-network]
+    healthcheck: *mongo-healthcheck
+
+  mongo-payments:
+    image: mongo:7.0
+    container_name: ecommerce-mongo-payments
+    restart: unless-stopped
+    volumes:
+      - mongo-payments-data:/data/db
+    networks: [ecommerce-network]
+    healthcheck: *mongo-healthcheck
+
+  # ── Services applicatifs ─────────────────────────────────────
+  auth-service:
+    build: ./services/auth-service
+    container_name: ecommerce-auth-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo-auth:27017/ecommerce-auth
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-please-change}
+      JWT_EXPIRES_IN: 1h
+    depends_on:
+      mongo-auth:
+        condition: service_healthy
+    networks: [ecommerce-network]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  product-service:
+    build: ./services/product-service
+    container_name: ecommerce-product-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      MONGODB_URI: mongodb://mongo-products:27017/ecommerce-products
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-please-change}
+    depends_on:
+      mongo-products:
+        condition: service_healthy
+    networks: [ecommerce-network]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  order-service:
+    build: ./services/order-service
+    container_name: ecommerce-order-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      MONGODB_URI: mongodb://mongo-orders:27017/ecommerce-orders
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-please-change}
+      PRODUCT_SERVICE_URL: http://product-service:3002
+    depends_on:
+      mongo-orders:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    networks: [ecommerce-network]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  payment-service:
+    build: ./services/payment-service
+    container_name: ecommerce-payment-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      MONGODB_URI: mongodb://mongo-payments:27017/ecommerce-payments
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-please-change}
+      ORDER_SERVICE_URL: http://order-service:3003
+      PAYMENT_SUCCESS_RATE: ${PAYMENT_SUCCESS_RATE:-0.7}
+    depends_on:
+      mongo-payments:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+    networks: [ecommerce-network]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3004/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ── Point d'entrée unique (seul exposé à l'hôte) ─────────────
+  api-gateway:
+    build: ./services/api-gateway
+    container_name: ecommerce-api-gateway
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-please-change}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      ORDER_SERVICE_URL: http://order-service:3003
+      PAYMENT_SERVICE_URL: http://payment-service:3004
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX: 100
+    ports:
+      - "3000:3000"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    networks: [ecommerce-network]
+
+volumes:
+  mongo-auth-data:
+  mongo-products-data:
+  mongo-orders-data:
+  mongo-payments-data:
+
+networks:
+  ecommerce-network:
+    driver: bridge
