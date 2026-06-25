@@ -45,12 +45,14 @@ pipeline {
       }
     }
 
-    // 2. Install — dépendances npm de chaque service
+    // 2. Install — dépendances npm de chaque service (dans un conteneur Node)
     stage('Install') {
       steps {
         script {
-          SERVICES.each { svc ->
-            sh "npm install --prefix services/${svc}"
+          docker.image('node:22-alpine').inside('-u root') {
+            SERVICES.each { svc ->
+              sh "npm install --prefix services/${svc}"
+            }
           }
         }
       }
@@ -60,8 +62,10 @@ pipeline {
     stage('Test') {
       steps {
         script {
-          SERVICES.each { svc ->
-            sh "npm test --prefix services/${svc} || true"
+          docker.image('node:22-alpine').inside('-u root') {
+            SERVICES.each { svc ->
+              sh "npm test --prefix services/${svc} || true"
+            }
           }
         }
       }
