@@ -4,6 +4,15 @@
 
 def SERVICES = ['api-gateway', 'auth-service', 'product-service', 'order-service', 'payment-service']
 
+// Notification Slack tolérante : ne casse pas le build si le plugin/config Slack est absent
+def notifySlack(String color, String message) {
+  try {
+    slackSend(color: color, message: message)
+  } catch (ignored) {
+    echo "Slack indisponible — notification ignorée : ${message}"
+  }
+}
+
 pipeline {
   agent any
 
@@ -150,13 +159,13 @@ pipeline {
               "failureReason": "Échec du pipeline à l'étape ${STAGE_NAME ?: 'inconnue'}"
             }' || true
         """
-        slackSend(color: 'danger', message: "❌ Échec du build : ${JOB_NAME} #${BUILD_NUMBER} - ${BUILD_URL}")
+        notifySlack('danger', "❌ Échec du build : ${JOB_NAME} #${BUILD_NUMBER} - ${BUILD_URL}")
       }
     }
     success {
       script {
         if (currentBuild.previousBuild?.result == 'FAILURE') {
-          slackSend(color: 'good', message: "✅ Build rétabli : ${JOB_NAME} #${BUILD_NUMBER}")
+          notifySlack('good', "✅ Build rétabli : ${JOB_NAME} #${BUILD_NUMBER}")
         }
       }
     }
