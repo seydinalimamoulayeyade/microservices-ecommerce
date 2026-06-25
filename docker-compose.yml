@@ -13,6 +13,7 @@ services:
     image: mongo:7.0
     container_name: ecommerce-mongo-auth
     restart: unless-stopped
+    mem_limit: 384m
     volumes:
       - mongo-auth-data:/data/db
     networks: [ecommerce-network]
@@ -22,6 +23,7 @@ services:
     image: mongo:7.0
     container_name: ecommerce-mongo-products
     restart: unless-stopped
+    mem_limit: 384m
     volumes:
       - mongo-products-data:/data/db
     networks: [ecommerce-network]
@@ -31,6 +33,7 @@ services:
     image: mongo:7.0
     container_name: ecommerce-mongo-orders
     restart: unless-stopped
+    mem_limit: 384m
     volumes:
       - mongo-orders-data:/data/db
     networks: [ecommerce-network]
@@ -40,16 +43,21 @@ services:
     image: mongo:7.0
     container_name: ecommerce-mongo-payments
     restart: unless-stopped
+    mem_limit: 384m
     volumes:
       - mongo-payments-data:/data/db
     networks: [ecommerce-network]
     healthcheck: *mongo-healthcheck
 
   # ── Services applicatifs ─────────────────────────────────────
+  # image: réutilise l'image construite/poussée par le pipeline (pas de rebuild au deploy)
+  # build: permet aussi un usage autonome via `docker compose up --build`
   auth-service:
+    image: lims4/ecommerce-auth-service:latest
     build: ./services/auth-service
     container_name: ecommerce-auth-service
     restart: unless-stopped
+    mem_limit: 192m
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -68,9 +76,11 @@ services:
       start_period: 15s
 
   product-service:
+    image: lims4/ecommerce-product-service:latest
     build: ./services/product-service
     container_name: ecommerce-product-service
     restart: unless-stopped
+    mem_limit: 192m
     environment:
       NODE_ENV: production
       PORT: 3002
@@ -88,9 +98,11 @@ services:
       start_period: 15s
 
   order-service:
+    image: lims4/ecommerce-order-service:latest
     build: ./services/order-service
     container_name: ecommerce-order-service
     restart: unless-stopped
+    mem_limit: 192m
     environment:
       NODE_ENV: production
       PORT: 3003
@@ -111,9 +123,11 @@ services:
       start_period: 15s
 
   payment-service:
+    image: lims4/ecommerce-payment-service:latest
     build: ./services/payment-service
     container_name: ecommerce-payment-service
     restart: unless-stopped
+    mem_limit: 192m
     environment:
       NODE_ENV: production
       PORT: 3004
@@ -136,9 +150,11 @@ services:
 
   # ── Point d'entrée unique (seul exposé à l'hôte) ─────────────
   api-gateway:
+    image: lims4/ecommerce-api-gateway:latest
     build: ./services/api-gateway
     container_name: ecommerce-api-gateway
     restart: unless-stopped
+    mem_limit: 192m
     environment:
       NODE_ENV: production
       PORT: 3000

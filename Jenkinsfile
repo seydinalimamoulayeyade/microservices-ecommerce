@@ -118,10 +118,10 @@ pipeline {
       }
     }
 
-    // 8. Deploy — mise à jour de la stack (Docker Compose en local ; voir notes pour EKS)
+    // 8. Deploy — démarre la stack avec les images déjà construites (pas de rebuild)
     stage('Deploy') {
       steps {
-        sh 'docker compose up -d --build'
+        sh 'docker compose up -d --no-build --remove-orphans'
       }
       post {
         success {
