@@ -88,3 +88,25 @@ npm install
 cp .env.example .env
 npm run dev
 ```
+
+## CI/CD (Jenkins + Deploy Board)
+
+Le `Jenkinsfile` reprend le pipeline du **Deploy Board** (Projet 2), adapté au monorepo : il itère sur les 5 services.
+
+**8 étapes** : Checkout → Install → Test → Sonar → Quality Gate → Docker Build → Docker Push → Deploy.
+- Build/test/scan/push des **5 services** (images `lims4/ecommerce-<service>`).
+- Le résultat (succès/échec) est reporté au backend Deploy Board via `POST /api/deployments` avec le header `x-deploy-token`, ce qui l'affiche dans le tableau de bord et déclenche les notifications Slack.
+
+**Pré-requis côté Jenkins** (identiques au Deploy Board) :
+
+| Élément | Type | Identifiant |
+|---------|------|-------------|
+| Identifiants Docker Hub | Username/Password | `docker-hub-credentials` |
+| Token d'ingestion Deploy Board | Secret text | `deploy-ingest-token` |
+| Scanner SonarQube | Tool | `SonarQubeScanner` |
+| Serveur SonarQube | Config système | `SonarQube` |
+| Webhook Slack | Plugin Slack | configuré globalement |
+
+`sonar-project.properties` définit l'analyse (sources = `services/`).
+
+> Déploiement : le stage `Deploy` fait `docker compose up -d` en local. Pour EKS (Phase 4), pousser les images sur **ECR** et remplacer ce stage par `aws eks update-kubeconfig` + `kubectl apply -R -f k8s/`.
